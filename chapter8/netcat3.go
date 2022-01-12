@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"time"
+	"sync"
 )
 
 func main() {
@@ -16,16 +16,20 @@ func main() {
 	defer func() {
 		conn.Close()
 	}()
+	wg := sync.WaitGroup{}
 
-	done := make(chan int)
 	go func() {
+		wg.Add(1)
+		defer func() {
+			log.Print("done")
+			wg.Done()
+		}()
 		mustCopy(os.Stdout, conn)
-		log.Print("done")
-		done <- 1
 	}()
+
 	mustCopy(conn, os.Stdin)
-	//conn.(*net.TCPConn).CloseWrite()
-	<-done
+	wg.Wait()
+	conn.(*net.TCPConn).CloseWrite()
 }
 
 func mustCopy(dst io.Writer, src io.Reader) {
